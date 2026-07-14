@@ -1,6 +1,0 @@
-{
-  "name": "ph-leaderboard",
-  "private": true,
-  "type": "module",
-  "engines": { "node": ">=18" }
-}
