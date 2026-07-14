@@ -17,7 +17,7 @@ async function fetchJina(path) {
   return res.text();
 }
 
-async function synthesize(name, detail) {
+async function synthesize(name, detail, attempt = 1) {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) return { zhName: name, zhDetail: detail };
 
@@ -45,12 +45,19 @@ async function synthesize(name, detail) {
         temperature: 0.3,
       }),
     });
+    if (!res.ok) throw new Error(`DeepSeek HTTP ${res.status}`);
     const json = await res.json();
     const text = json.choices?.[0]?.message?.content || '';
-    const zhName = text.match(/名称：(.+)/)?.[1]?.trim() || name;
-    const zhDetail = text.match(/简介：([\s\S]+)/)?.[1]?.trim() || detail;
+    const zhName = text.match(/名称：(.+)/)?.[1]?.trim();
+    const zhDetail = text.match(/简介：([\s\S]+)/)?.[1]?.trim();
+    if (!zhName || !zhDetail) throw new Error('DeepSeek 返回格式不符合预期');
     return { zhName, zhDetail };
-  } catch {
+  } catch (err) {
+    if (attempt < 2) {
+      await new Promise(r => setTimeout(r, 1000));
+      return synthesize(name, detail, attempt + 1);
+    }
+    console.warn(`⚠️ 翻译失败，回退英文原文: ${name} (${err.message})`);
     return { zhName: name, zhDetail: detail };
   }
 }
